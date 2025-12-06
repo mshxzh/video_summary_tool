@@ -1,8 +1,9 @@
 # Core dependencies
 streamlit==1.40.0
-pytubefix==9.3.0
-langchain-google-genai==2.1.0
+youtube-transcript-api>=0.6.1
+langchain-google-genai>=2.0.0
 langchain-core>=0.3.15
+google-generativeai>=0.8.0
 langdetect==1.0.9
 
 # SSL Certificate handling
@@ -13,3 +14,6 @@ urllib3>=2.0.7,<3.0
 python-dotenv==1.0.1
 tqdm==4.67.1
 rich==13.9.4
+
+# Visualization
+plotly>=5.18.0

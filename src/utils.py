@@ -69,8 +69,8 @@ def style_css(background_image):
     </style>
 
     <p style="text-align:center; font-size:40px; color:#ffffff; font-weight: bold">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">YouTube Subtitle Summarizer
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">Know Your YouTube Videos
     </p>
-    <div class="small-text"><p style="text-align:center;">Get intelligent summaries from YouTube video subtitles</p></div>
+    <div class="small-text"><p style="text-align:center;">Get summaries from YouTube video subtitles, analyze comments and get sentiment analysis</p></div>
 """
 
