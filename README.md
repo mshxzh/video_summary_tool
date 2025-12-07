@@ -40,7 +40,7 @@ A powerful Streamlit application for analyzing YouTube videos through subtitle s
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/mashazhigalova/video_summary_tool.git
+   git clone https://github.com/mshxzh/yt_smart_assistant.git
    cd video_summary_tool
    ```
 
