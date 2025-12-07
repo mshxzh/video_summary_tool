@@ -1,24 +1,40 @@
-# YouTube Subtitle Summarizer 🎬
+# YouTube Smart Assistant 🎬
 
-A Streamlit-based application that creates summaries and processed transcripts from YouTube video subtitles using Google's Gemini AI.
+A powerful Streamlit application for analyzing YouTube videos through subtitle summarization, comment sentiment analysis, and comment clustering using AI.
 
 ## Features ✨
 
-- Process YouTube videos by extracting their subtitles/captions
-- Generate concise summaries of video content from subtitles
-- Create full processed transcriptions from subtitles
-- Support for multiple subtitle languages available on YouTube
-- Support for multiple output languages (English, Dutch, Russian)
-- Copy summaries and transcripts to clipboard
-- Download transcripts as text files
-- Clean and modern UI with dark theme
-- Video embedding for preview
+### 📝 Video Summarization
+- Extract and process YouTube video subtitles/captions
+- Generate AI-powered summaries using Google's Gemini
+- Support for multiple subtitle languages
+- Translate summaries to English, Dutch, or Russian
+
+### 💬 Comment Sentiment Analysis
+- Fetch and analyze YouTube comments
+- Multilingual sentiment detection (English & Russian)
+- Visual sentiment distribution (pie chart)
+- Filter comments by sentiment (positive, neutral, negative)
+- Language detection with flag indicators
+
+### 🔮 Comment Clustering
+- Group similar comments using HDBSCAN clustering
+- LaBSE embeddings for multilingual support
+- Extract top keywords per cluster using TF-IDF
+- Interactive UMAP visualization
+- Adjustable clustering parameters
+
+### 🚀 Smart Features
+- **Comment Caching**: Fetched comments are cached per video - no re-downloading when switching between analysis tabs
+- **Incremental Fetching**: Request more comments and only the additional ones are fetched
+- **Password Protection**: Secure access to the application
 
 ## Requirements 📋
 
-- Python 3.8+
-- Gemini API key
-- Internet connection for YouTube API access
+- Python 3.10+
+- Gemini API key (for summarization)
+- YouTube Data API key (for comments)
+- Internet connection
 
 ## Installation 🚀
 
@@ -28,86 +44,100 @@ A Streamlit-based application that creates summaries and processed transcripts f
    cd video_summary_tool
    ```
 
-2. Install Python dependencies:
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
+3. Create a `.env` file with your API keys:
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key
+   YOUTUBE_API_KEY=your_youtube_api_key
+   APP_PASSWORD=your_access_password
+   ```
+
 ## Usage 💡
 
-1. Get your Gemini API key from [Google AI Studio](https://ai.google.dev/gemini-api/docs/api-key)
-
-2. Start the application:
+1. Start the application:
    ```bash
    streamlit run app.py
    ```
 
-3. In the application:
-   - Enter and validate your Gemini API key in the sidebar
-   - Paste a YouTube video URL
-   - Select from available subtitle languages
-   - Choose output language settings (original or translated)
-   - Click "Get Subtitle Summary" to process the video subtitles
-   - View and interact with the generated summary and transcript
+2. Enter the access password
 
-## Features in Detail 🔍
+3. Paste a YouTube video URL
 
-### Input Options
-- YouTube URL input with automatic validation
-- Support for various YouTube URL formats
-- Automatic subtitle language detection
+4. Choose your analysis:
+   - **Summary Tab**: Generate AI summary from subtitles
+   - **Sentiment Analysis Tab**: Analyze comment emotions
+   - **Comment Clusters Tab**: Discover comment topics
 
-### Subtitle Processing
-- Automatic detection of available subtitle languages
-- Support for multiple subtitle languages per video
-- Clean text extraction from YouTube captions
-- Error handling for videos without subtitles
+## Project Structure 📁
 
-### Language Settings
-- Original language processing
-- Translation options:
-  - English
-  - Dutch
-  - Russian
+```
+video_summary_tool/
+├── app.py                      # Main Streamlit application
+├── src/
+│   ├── utils.py               # Utilities, caching, styling
+│   ├── llm_actions.py         # Gemini API interactions
+│   ├── media_processing.py    # YouTube subtitle extraction
+│   ├── comments_classification.py  # Sentiment analysis
+│   └── comments_clustering.py      # HDBSCAN clustering
+├── requirements.txt
+└── README.md
+```
 
-### Output Options
-- Video summary from subtitles
-- Full processed transcript
-- Copy to clipboard functionality
-- Transcript download as text file
+## API Keys 🔑
 
-### UI Features
-- Dark theme with custom styling
-- Video embedding for preview
-- Progress indicators
-- Expandable sections
-- Clear error messages
-- Reset functionality
+### Gemini API
+Get your key from [Google AI Studio](https://ai.google.dev/gemini-api/docs/api-key)
+
+### YouTube Data API
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project and enable YouTube Data API v3
+3. Create credentials (API key)
+
+## Technical Details 🔧
+
+### Models Used
+- **Summarization**: Google Gemini 2.0 Flash
+- **Sentiment (English)**: `cardiffnlp/twitter-roberta-base-sentiment-latest`
+- **Sentiment (Russian)**: `blanchefort/rubert-base-cased-sentiment`
+- **Embeddings**: `sentence-transformers/LaBSE` (multilingual)
+- **Clustering**: HDBSCAN with UMAP visualization
+
+### Comment Caching
+Comments are cached per video session:
+- First fetch: Downloads and caches comments
+- Subsequent requests: Uses cache if sufficient, fetches only additional needed
+- Cache clears automatically when video URL changes
 
 ## Limitations 📝
 
-- **Subtitles Required**: Only works with YouTube videos that have subtitles/captions available
-- **No Audio Processing**: Does not process audio directly - only uses existing subtitles
-- **Internet Required**: Requires internet connection for YouTube API and Gemini API calls
-- **YouTube Only**: Only supports YouTube videos, not other video platforms
+- **Subtitles Required**: Summarization only works with videos that have captions
+- **Comment Access**: Some videos have comments disabled
+- **API Quotas**: YouTube API has daily quota limits
+- **Processing Time**: Clustering large comment sets may take time
 
-## Troubleshooting 🔧
+## Troubleshooting 🚨
 
-If you encounter issues:
-1. Verify your Gemini API key is valid
-2. Check your internet connection
-3. Ensure the YouTube video has subtitles/captions available
-4. Try a different video if subtitle extraction fails
-5. Check if the YouTube URL is valid and accessible
+| Issue | Solution |
+|-------|----------|
+| No subtitles available | Choose a video with captions enabled |
+| Comments not loading | Check YOUTUBE_API_KEY in .env |
+| Clustering fails | Try with more comments or lower min_cluster_size |
+| SSL errors (macOS) | App includes fallback for NLTK stopwords |
 
-## Supported YouTube URL Formats 🔗
+## Supported URL Formats 🔗
 
 - `https://www.youtube.com/watch?v=VIDEO_ID`
 - `https://youtu.be/VIDEO_ID`
 - `https://www.youtube.com/embed/VIDEO_ID`
 
-## Common Issues 🚨
+## License 📄
 
-- **"No subtitles available"**: Choose a video with closed captions or auto-generated subtitles
-- **"Could not retrieve subtitles"**: The video may have restricted access or the subtitles may be corrupted
-- **API errors**: Check your Gemini API key and internet connection
+For educational purposes only.
+
+---
+
+Built with ❤️ using Streamlit, Transformers, and Google Gemini
