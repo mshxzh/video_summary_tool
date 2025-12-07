@@ -13,6 +13,10 @@ from src.comments_clustering import cluster_comments, reduce_dimensions_for_plot
 from src.llm_actions import *
 from src.utils import *
 
+from dotenv import load_dotenv, find_dotenv
+_ = load_dotenv(find_dotenv())  # read local .env file
+APP_PASSWORD = os.getenv("APP_PASSWORD")
+
 
 # Set the page configuration (should be at the top)
 st.set_page_config(page_title="Know Your YouTube Videos", layout='centered', page_icon=":material/subtitles:")
@@ -23,6 +27,49 @@ background_image = get_base64('src/background.jpg')  # Replace with your light t
 st.markdown(style_css(background_image), unsafe_allow_html=True)
 
 st.divider() 
+
+# ========== PASSWORD PROTECTION ==========
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+def check_password():
+    """Show password dialog and verify access."""
+    if st.session_state.authenticated:
+        return True
+    
+    # Create a centered container for the login form
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.markdown("""
+            <div style="background: rgba(0,0,0,0.4); padding: 15px 40px; border-radius: 12px; backdrop-filter: blur(10px); margin: 20px auto 0 auto; max-width: 500px;">
+                <p style="color: white; text-align: center; margin-bottom: 8px; font-size: 30px; font-weight: bold;">🔐 Access Required</p>
+                <p style="color: rgba(255,255,255,0.7); text-align: center; margin-bottom: 0; font-size: 14px;">Please enter the password to continue</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        password = st.text_input("", type="password", key="password_input", placeholder="Enter password...")
+        
+        if st.button("🔓 Unlock", type="primary", use_container_width=True):
+            if password == APP_PASSWORD:
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("❌ Incorrect password. Please try again.")
+        
+        st.markdown("""
+            <p style="color: rgba(255,255,255,0.5); text-align: center; font-size: 12px; margin-top: 20px;">
+                Contact the administrator if you need access
+            </p>
+        """, unsafe_allow_html=True)
+    
+    return False
+
+# Check password before showing main content
+if not check_password():
+    st.stop()
+
+# ========== END PASSWORD PROTECTION ==========
 
 # Initialize session state variables
 if "summary" not in st.session_state:
