@@ -67,11 +67,37 @@ def style_css(background_image):
             display: flex;
             align-items: center;
         }}
+        
+        /* Apple Liquid Glass Title Effect */
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap');
+        
+        .liquid-glass-title {{
+            font-family: 'Nunito', sans-serif;
+            font-size: 48px;
+            font-weight: 800;
+            text-align: center;
+            background: linear-gradient(
+                135deg,
+                rgba(255, 255, 255, 1) 0%,
+                rgba(240, 245, 255, 1) 25%,
+                rgba(235, 240, 255, 1) 50%,
+                rgba(245, 240, 255, 1) 75%,
+                rgba(255, 255, 255, 1) 100%
+            );
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.4))
+                    drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
+            letter-spacing: -0.5px;
+            margin: 0;
+            padding: 10px 0;
+        }}
+        
     </style>
-
-    <p style="text-align:center; font-size:40px; color:#ffffff; font-weight: bold">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">Know Your YouTube Videos
-    </p>
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <p class="liquid-glass-title">Youtube Smart Assistant</p>
     <div class="small-text"><p style="text-align:center;">Get summaries from YouTube video subtitles, analyze comments and get sentiment analysis</p></div>
     <br>
     <div class="small-text"><p style="text-align:center; font-size:15px; font-weight: bold">⚠️ Disclaimer: for educational purposes only! ⚠️</p></div>
