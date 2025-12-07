@@ -19,7 +19,7 @@ APP_PASSWORD = os.getenv("APP_PASSWORD")
 
 
 # Set the page configuration (should be at the top)
-st.set_page_config(page_title="Know Your YouTube Videos", layout='centered', page_icon=":material/subtitles:")
+st.set_page_config(page_title="Youtube Smart Assistant", layout='centered', page_icon=":material/subtitles:")
 
 # Background image https://unsplash.com/photos/blue-and-yellow-abstract-painting-1xZ0SqLPE4E
 background_image = get_base64('src/background.jpg')  # Replace with your light theme image
