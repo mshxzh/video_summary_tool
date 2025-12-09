@@ -58,9 +58,17 @@ FALLBACK_RU_STOPWORDS = {
 
 # Try to download and load NLTK stopwords, fall back if SSL fails
 def _load_stopwords():
+    import io
+    import sys
+    
+    # Suppress NLTK download messages
+    old_stderr = sys.stderr
+    sys.stderr = io.StringIO()
+    
     try:
         # Try to download with SSL verification
         nltk.download('stopwords', quiet=True)
+        sys.stderr = old_stderr
         from nltk.corpus import stopwords
         en_sw = set(stopwords.words('english'))
         ru_sw = set(stopwords.words('russian'))
@@ -70,13 +78,17 @@ def _load_stopwords():
             # Try with unverified SSL context (macOS workaround)
             ssl._create_default_https_context = ssl._create_unverified_context
             nltk.download('stopwords', quiet=True)
+            sys.stderr = old_stderr
             from nltk.corpus import stopwords
             en_sw = set(stopwords.words('english'))
             ru_sw = set(stopwords.words('russian'))
             return en_sw, ru_sw
         except Exception:
-            # Use fallback stopwords
+            # Use fallback stopwords (no download needed)
+            sys.stderr = old_stderr
             return FALLBACK_EN_STOPWORDS, FALLBACK_RU_STOPWORDS
+    finally:
+        sys.stderr = old_stderr
 
 EN_STOPWORDS, RU_STOPWORDS = _load_stopwords()
 # Convert to list immediately - TfidfVectorizer requires a list, not a set
