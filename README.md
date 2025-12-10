@@ -1,142 +1,119 @@
 # YouTube Smart Assistant 🎬
 
-A powerful Streamlit application for analyzing YouTube videos through subtitle summarization, comment sentiment analysis, and comment clustering using AI.
+An app for summarizing YouTube videos, analyzing comments, and clustering discussions.
+
+Two options are available (choose based on deployment setting):
+
+- **app_captions.py** (best accuracy, subtitles-based) — For local/educational use only; it processes video captions to produce highly accurate summaries.
+- **app_metadata.py** (cloud-safe, metadata-based) — For cloud deployments where pulling full YouTube content is a concern; uses only public metadata (title/description), so summaries are faster but less precise.
 
 ## Features ✨
 
 ### 📝 Video Summarization
-- Extract and process YouTube video subtitles/captions
-- Generate AI-powered summaries using Google's Gemini
-- Support for multiple subtitle languages
-- Translate summaries to English, Dutch, or Russian
+- **Captions-based** (`app_captions.py`): Extract and process YouTube video subtitles/captions
+- **Metadata-based** (`app_metadata.py`): Use video title and description for quick summaries
+- Generate AI-powered summaries using Google's Gemini 2.5 Flash
+- Support for multiple subtitle languages (captions app)
+- Translate summaries to English, Dutch, Russian, or use detected language
+- Rich video metadata display (title, channel, publish date, description)
 
 ### 💬 Comment Sentiment Analysis
-- Fetch and analyze YouTube comments
+- Fetch and analyze YouTube comments using YouTube Data API
 - Multilingual sentiment detection (English & Russian)
-- Visual sentiment distribution (pie chart)
+- Visual sentiment distribution with interactive pie charts
 - Filter comments by sentiment (positive, neutral, negative)
-- Language detection with flag indicators
+- Language detection with flag indicators (🇬🇧 🇷🇺)
+- Detailed sentiment scores and confidence levels
+- Color-coded comment cards for easy scanning
 
 ### 🔮 Comment Clustering
-- Group similar comments using HDBSCAN clustering
-- LaBSE embeddings for multilingual support
-- Extract top keywords per cluster using TF-IDF
-- Interactive UMAP visualization
-- Adjustable clustering parameters
+- Group similar comments using HDBSCAN clustering algorithm
+- LaBSE embeddings for multilingual comment support
+- Extract top keywords per cluster using TF-IDF with NLTK stopwords
+- Interactive UMAP 2D visualization
+- Adjustable clustering parameters (min cluster size, max comments)
+- Cluster size distribution charts
+- Keyword tags with color coding per cluster
 
 ### 🚀 Smart Features
 - **Comment Caching**: Fetched comments are cached per video - no re-downloading when switching between analysis tabs
-- **Incremental Fetching**: Request more comments and only the additional ones are fetched
-- **Password Protection**: Secure access to the application
+- **Incremental Fetching**: Request more comments and only the additional ones are fetched (e.g., 50 → 100 only fetches 50 more)
+- **Password Protection**: Secure access to the application via `.env` password
+- **Video Metadata Display**: Beautiful card showing video title, channel, publish date, and description preview
+- **Error Handling**: Graceful fallbacks for missing captions, SSL issues, and API failures
 
 ## Requirements 📋
-
 - Python 3.10+
-- Gemini API key (for summarization)
-- YouTube Data API key (for comments)
+- `GEMINI_API_KEY` (summaries)
+- `YOUTUBE_API_KEY` (comments + metadata)
 - Internet connection
 
 ## Installation 🚀
+```bash
+git clone https://github.com/mshxzh/yt_smart_assistant.git
+cd yt_smart_assistant
+pip install -r requirements.txt
+```
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/mshxzh/yt_smart_assistant.git
-   cd yt_smart_assistant
-   ```
+Create `.env`:
+```env
+GEMINI_API_KEY=your_gemini_api_key
+YOUTUBE_API_KEY=your_youtube_api_key
+APP_PASSWORD=your_access_password
+```
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Run the apps 💡
+- Captions (preferred for accurate summaries):
+  ```bash
+  streamlit run app_captions.py
+  ```
+- Metadata (quick, works without captions):
+  ```bash
+  streamlit run app_metadata.py
+  ```
 
-3. Create a `.env` file with your API keys:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key
-   YOUTUBE_API_KEY=your_youtube_api_key
-   APP_PASSWORD=your_access_password
-   ```
-
-## Usage 💡
-
-1. Start the application:
-   ```bash
-   streamlit run app.py
-   ```
-
-2. Enter the access password
-
-3. Paste a YouTube video URL
-
-4. Choose your analysis:
-   - **Summary Tab**: Generate AI summary from subtitles
-   - **Sentiment Analysis Tab**: Analyze comment emotions
-   - **Comment Clusters Tab**: Discover comment topics
+Then:
+1) Enter the access password  
+2) Paste a YouTube URL  
+3) Generate summary, run sentiment analysis, or cluster comments
 
 ## Project Structure 📁
-
 ```
 video_summary_tool/
-├── app.py                      # Main Streamlit application
+├── app_captions.py        # Captions-based summarizer (accurate)
+├── app_metadata.py        # Metadata-based summarizer (fast fallback)
 ├── src/
-│   ├── utils.py               # Utilities, caching, styling
-│   ├── llm_actions.py         # Gemini API interactions
-│   ├── media_processing.py    # YouTube subtitle extraction
-│   ├── comments_classification.py  # Sentiment analysis
-│   └── comments_clustering.py      # HDBSCAN clustering
+│   ├── utils.py
+│   ├── llm_actions.py     # Gemini interactions
+│   ├── media_processing.py # YouTube metadata, captions, comments
+│   ├── comments_classification.py
+│   └── comments_clustering.py
 ├── requirements.txt
 └── README.md
 ```
 
-## API Keys 🔑
-
-### Gemini API
-Get your key from [Google AI Studio](https://ai.google.dev/gemini-api/docs/api-key)
-
-### YouTube Data API
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a project and enable YouTube Data API v3
-3. Create credentials (API key)
-
 ## Technical Details 🔧
-
-### Models Used
-- **Summarization**: Google Gemini 2.0 Flash
-- **Sentiment (English)**: `cardiffnlp/twitter-roberta-base-sentiment-latest`
-- **Sentiment (Russian)**: `blanchefort/rubert-base-cased-sentiment`
-- **Embeddings**: `sentence-transformers/LaBSE` (multilingual)
-- **Clustering**: HDBSCAN with UMAP visualization
-
-### Comment Caching
-Comments are cached per video session:
-- First fetch: Downloads and caches comments
-- Subsequent requests: Uses cache if sufficient, fetches only additional needed
-- Cache clears automatically when video URL changes
+- Summarization LLM: Gemini 2.5 Flash
+- Embeddings: `sentence-transformers/LaBSE`
+- Clustering: HDBSCAN + UMAP
+- Sentiment: `cardiffnlp/twitter-roberta-base-sentiment-latest` (EN), `blanchefort/rubert-base-cased-sentiment` (RU)
+- Comment caching: per-video, incremental, auto-cleared on URL change
 
 ## Limitations 📝
-
-- **Subtitles Required**: Summarization only works with videos that have captions
-- **Comment Access**: Some videos have comments disabled
-- **API Quotas**: YouTube API has daily quota limits
-- **Processing Time**: Clustering large comment sets may take time
+- Captions app: needs videos with subtitles for accurate summaries
+- Metadata app: faster but less precise (no transcript)
+- Comments may be disabled or limited; YouTube API quotas apply
 
 ## Troubleshooting 🚨
-
-| Issue | Solution |
-|-------|----------|
-| No subtitles available | Choose a video with captions enabled |
-| Comments not loading | Check YOUTUBE_API_KEY in .env |
-| Clustering fails | Try with more comments or lower min_cluster_size |
-| SSL errors (macOS) | App includes fallback for NLTK stopwords |
+- No subtitles → use a video with captions or switch to `app_metadata.py`
+- Comments not loading → check `YOUTUBE_API_KEY`
+- Clustering fails → increase comments or reduce `min_cluster_size`
+- SSL issues on macOS (NLTK) → fallback stopwords already included
 
 ## Supported URL Formats 🔗
-
 - `https://www.youtube.com/watch?v=VIDEO_ID`
 - `https://youtu.be/VIDEO_ID`
 - `https://www.youtube.com/embed/VIDEO_ID`
-
-## License 📄
-
-For educational purposes only.
 
 ---
 
