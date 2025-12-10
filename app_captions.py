@@ -84,12 +84,8 @@ if "video_id" not in st.session_state:
     st.session_state.video_id = None
 if "previous_url" not in st.session_state:
     st.session_state.previous_url = None
-if "disabled_button" not in st.session_state:
-    st.session_state.disabled_button = False  # Default to not disabled
 if "use_original_language" not in st.session_state:
     st.session_state.use_original_language = True  # Initialize language preference
-if "language_settings_disabled" not in st.session_state:
-    st.session_state.language_settings_disabled = False  # Initialize language settings disabled state
 if "comments_data" not in st.session_state:
     st.session_state.comments_data = None
 if "cluster_data" not in st.session_state:
@@ -185,17 +181,10 @@ def main():
     if has_any_data and st.session_state.previous_url is not None:
         if current_url and st.session_state.previous_url != current_url:
             clear_outputs()
-            st.session_state.disabled_button = False
-            st.session_state.language_settings_disabled = False
 
     if st.session_state.condition_yt:
         # Create tabs for Summary, Sentiment Analysis, and Clustering
         tab_summary, tab_comments, tab_clusters = st.tabs(["📝 Summary", "💬 Sentiment Analysis", "🔮 Comment Clusters"])
-        
-        # Callback function to disable the button and language settings
-        def disable_summary():
-            st.session_state.disabled_button = True
-            st.session_state.language_settings_disabled = True
         
         # ---------- SUMMARY TAB ----------
         with tab_summary:
@@ -230,14 +219,13 @@ def main():
                 with col1:
                     st.session_state.use_original_language = st.toggle(
                         "Use detected language", 
-                        value=st.session_state.use_original_language,
-                        disabled=st.session_state.language_settings_disabled
+                        value=st.session_state.use_original_language
                     )
                 with col2:
                     lang_option = st.selectbox(
                         "What language do you prefer?",
                         ("English", "Dutch", "Russian"),
-                        disabled=st.session_state.use_original_language or st.session_state.language_settings_disabled,
+                        disabled=st.session_state.use_original_language
                     )
             if st.session_state.use_original_language:
                 lang_option = ""
@@ -254,27 +242,22 @@ def main():
                 generate_content_button = st.button("Get Subtitle Summary", 
                         type='primary', 
                         use_container_width=True, 
-                        on_click=disable_summary,
-                        disabled=st.session_state.disabled_button,
                         key="summary_btn")
 
                 if generate_content_button:
                     start_time = time.time()
-                    st.session_state.disabled_button = True
                     with st.spinner("Processing subtitles..."):
 
                         try:
                             # Get subtitles
                             if captions_lang is None:
                                 st.error("No subtitle language selected.")
-                                st.session_state.disabled_button = False
                                 return
                                 
                             subtitles_text = retrieve_subtitles(st.session_state.video_id, captions_lang)
                             
                             if not subtitles_text.strip():
                                 st.error("Could not retrieve subtitles. Please try a different video.")
-                                st.session_state.disabled_button = False
                                 return
                             
                             st.info(f"Using subtitles in {captions_lang}", icon=":material/closed_caption:")
@@ -291,7 +274,6 @@ def main():
                             
                         except Exception as e:
                             st.error(f"An error occurred: {str(e)}")
-                            st.session_state.disabled_button = False
 
             if st.session_state.summary:
                 with st.expander("Summary", expanded=True):
