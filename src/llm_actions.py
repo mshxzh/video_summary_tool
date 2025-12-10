@@ -86,3 +86,55 @@ def summarize_text(input_text: str, chosen_language: str) -> str:
 
     except Exception as e:
         raise RuntimeError(f"Error during summarization: {str(e)}")
+
+
+def summarize_video_from_metadata(metadata: dict, chosen_language: str = "") -> str:
+    """
+    Summarizes a YouTube video using its metadata (title, description, tags).
+    Uses real data from YouTube API; asks LLM to summarize.
+
+    Args:
+        metadata (dict): The metadata of the YouTube video.
+        chosen_language (str): The language for the summary (empty = auto-detect).
+
+    Returns:
+        str: The generated summary.
+    """
+    title = metadata.get("title", "Unknown")
+    description = metadata.get("description", "No description available")
+    channel = metadata.get("channel", "Unknown")
+    
+    # Truncate description if too long
+    if len(description) > 2000:
+        description = description[:2000] + "..."
+    
+    language_instruction = f"Respond in {chosen_language}." if chosen_language else "Respond in the same language as the video title."
+    
+    prompt = f"""
+    I need you to write a quick, honest overview of a YouTube video based ONLY on its metadata.
+    
+    Video Title: {title}
+    Channel: {channel}
+    Description: {description}
+    
+    Write a SHORT response (2-4 sentences) in this style:
+    "I can't watch this video directly, but based on the title and description from **{channel}**, this appears to be about [main topic]. It likely covers [key points from description]."
+    
+    Rules:
+    - Be conversational and honest that you're inferring from metadata
+    - Keep it brief - just the essential info
+    - Mention the channel name
+    - If the description has timestamps/chapters, briefly mention what topics are covered
+    - {language_instruction}
+    - Don't use bullet points, just flowing text
+    """
+    
+    try:
+        print(f"Generating summary for: {title}")
+        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=GEMINI_API_KEY)
+        response = llm.invoke(prompt)
+        print(f"Video summarization complete!")
+        return response.content
+        
+    except Exception as e:
+        raise RuntimeError(f"Error during video summarization: {str(e)}")
