@@ -46,7 +46,7 @@ def check_password():
             </div>
         """, unsafe_allow_html=True)
         
-        password = st.text_input("", type="password", key="password_input", placeholder="Enter password...")
+        password = st.text_input("Password:", type="password", key="password_input", placeholder="Enter password...")
         
         if st.button("🔓 Unlock", type="primary", use_container_width=True):
             if password == APP_PASSWORD:
