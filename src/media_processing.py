@@ -63,6 +63,10 @@ def find_captions(video_id: str) -> Dict[str, str]:
     Returns:
         Dict[str, str]: A dictionary containing the language codes and names of the available captions.
     """
+    # Validate input
+    if not video_id or not isinstance(video_id, str):
+        return {}
+    
     try:
         # Create API instance and list transcripts (v1.x API)
         ytt_api = YouTubeTranscriptApi()
@@ -111,8 +115,6 @@ def retrieve_subtitles(video_id: str, selected_caption_language: str) -> str:
         target_transcript = None
         for transcript in transcript_list:
             lang_name = transcript.language
-            # if transcript.is_generated:
-            #     lang_name = f"{lang_name} (auto-generated)"
             
             if lang_name == selected_caption_language:
                 target_transcript = transcript
