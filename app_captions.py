@@ -5,11 +5,9 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 
-from src.media_processing import get_video_info, find_captions, retrieve_subtitles
-from src.comments_classification import (
-    fetch_top_comments_from_youtube, predict_sentiment, clean_text, clean_text_for_display
-)
-from src.comments_clustering import cluster_comments, reduce_dimensions_for_plot, top_keywords_per_cluster_nltk
+from src.media_processing import *
+from src.comments_classification import *
+from src.comments_clustering import *
 from src.llm_actions import *
 from src.utils import *
 
@@ -76,6 +74,14 @@ if "summary" not in st.session_state:
     st.session_state.summary = None
 if "video_title" not in st.session_state:
     st.session_state.video_title = None
+if "video_description" not in st.session_state:
+    st.session_state.video_description = None
+if "video_channel" not in st.session_state:
+    st.session_state.video_channel = None
+if "video_published_at" not in st.session_state:
+    st.session_state.video_published_at = None
+if "video_id" not in st.session_state:
+    st.session_state.video_id = None
 if "previous_url" not in st.session_state:
     st.session_state.previous_url = None
 if "disabled_button" not in st.session_state:
@@ -101,6 +107,11 @@ if "comments_cache" not in st.session_state:
     st.session_state.comments_cache = None
 
 def clear_outputs():
+    st.session_state.video_title = None
+    st.session_state.video_description = None
+    st.session_state.video_channel = None
+    st.session_state.video_published_at = None
+    st.session_state.video_id = None
     st.session_state.summary = None
     st.session_state.comments_data = None
     st.session_state.cluster_data = None
@@ -133,13 +144,37 @@ def main():
         emb_youtube_url = convert_youtube_url(st.session_state[f"yt_{st.session_state.youtube_key}"])
         st.markdown(f'<iframe width="100%" height="450" src="{emb_youtube_url}" frameBorder="0" allow="clipboard-write; autoplay" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>', unsafe_allow_html=True)
         
-        title = get_video_info(st.session_state[f"yt_{st.session_state.youtube_key}"])
-        st.session_state.video_title = title
+        video_metadata = fetch_video_metadata(st.session_state[f"yt_{st.session_state.youtube_key}"])
+
+        st.session_state.video_title = video_metadata["title"]
+        st.session_state.video_id = video_metadata["video_id"]
+        st.session_state.video_description = video_metadata["description"]
+        st.session_state.video_channel = video_metadata["channel"]
+        st.session_state.video_published_at = video_metadata["published_at"]
+        
+        # Format published date
+        published_date = ""
+        if st.session_state.video_published_at:
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(st.session_state.video_published_at.replace('Z', '+00:00'))
+                published_date = dt.strftime("%b %d, %Y")
+            except:
+                published_date = st.session_state.video_published_at[:10] if st.session_state.video_published_at else ""
+        
+        # Truncate description for display
+        description_preview = re.sub(r'\n', ' ', st.session_state.video_description) or ""
+        if len(description_preview) > 200:
+            description_preview = description_preview[:200] + "..."
         
         st.markdown(f'''
-            <p style="font-size: 14px; font-weight: bold; color: #1DB954; margin-bottom: 5px;">Video Details</p>
-            <div class="small-text"><p style="font-size: 16px; line-height: 1.3; margin-top: 0; margin-bottom: 25px; color: #ffffff;">{title}</p></div>
-            <p style="margin-bottom: 30px;"></p>
+            <div style="background: rgba(0,0,0,0.3); padding: 15px 20px; border-radius: 12px; margin-bottom: 20px;">
+                <p style="font-size: 18px; font-weight: bold; color: #ffffff; margin: 0 0 8px 0;">{st.session_state.video_title}</p>
+                <p style="font-size: 14px; color: #1DB954; margin: 0 0 8px 0;">
+                    📺 {st.session_state.video_channel} {f"• 📅 {published_date}" if published_date else ""}
+                </p>
+                <p style="font-size: 13px; color: rgba(255,255,255,0.7); margin: 0; line-height: 1.4;">{description_preview}</p>
+            </div>
         ''', unsafe_allow_html=True)
 
     # Check if previous URL changed to clear outputs
@@ -166,7 +201,16 @@ def main():
         with tab_summary:
             # Section for captions
             with st.expander("Subtitle Settings", expanded=True):
-                captions = find_captions(st.session_state[f"yt_{st.session_state.youtube_key}"])
+                # Check if video_id is valid before fetching captions
+                if st.session_state.video_id:
+                    try:
+                        captions = find_captions(st.session_state.video_id)
+                    except Exception as e:
+                        st.error(f"Error fetching captions: {str(e)}")
+                        captions = {}
+                else:
+                    captions = {}
+                
                 lang_list = list(captions.values())
                 
                 if not lang_list:
@@ -185,7 +229,7 @@ def main():
                 col1, col2 = st.columns([1,1])
                 with col1:
                     st.session_state.use_original_language = st.toggle(
-                        "Use original language", 
+                        "Use detected language", 
                         value=st.session_state.use_original_language,
                         disabled=st.session_state.language_settings_disabled
                     )
@@ -226,7 +270,7 @@ def main():
                                 st.session_state.disabled_button = False
                                 return
                                 
-                            subtitles_text = retrieve_subtitles(st.session_state[f"yt_{st.session_state.youtube_key}"], captions_lang)
+                            subtitles_text = retrieve_subtitles(st.session_state.video_id, captions_lang)
                             
                             if not subtitles_text.strip():
                                 st.error("Could not retrieve subtitles. Please try a different video.")
@@ -255,10 +299,18 @@ def main():
                     with col1:
                         if st.button("Re-generate Summary", type='secondary', key="regen_btn"):
                             # Re-get subtitles and regenerate summary
-                            captions = find_captions(st.session_state[f"yt_{st.session_state.youtube_key}"])
-                            lang_list = list(captions.values())
+                            if st.session_state.video_id:
+                                try:
+                                    captions = find_captions(st.session_state.video_id)
+                                    lang_list = list(captions.values())
+                                except Exception as e:
+                                    st.error(f"Error fetching captions: {str(e)}")
+                                    lang_list = []
+                            else:
+                                lang_list = []
+                            
                             if lang_list:
-                                subtitles_text = retrieve_subtitles(st.session_state[f"yt_{st.session_state.youtube_key}"], lang_list[0])
+                                subtitles_text = retrieve_subtitles(st.session_state.video_id, lang_list[0])
                                 summary = summarize_text(subtitles_text, chosen_language=lang_option)
                                 st.session_state.summary = summary
 
@@ -291,45 +343,37 @@ def main():
             }
 
             if analyze_sentiment_button:
-                # Extract video ID from URL
-                video_url = st.session_state[f"yt_{st.session_state.youtube_key}"]
-                video_id_match = re.search(r'(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})', video_url)
-                
-                if not video_id_match:
-                    st.error("Could not extract video ID from URL")
-                else:
-                    video_id = video_id_match.group(1)
                     
-                    with st.spinner("Fetching and analyzing comments..."):
-                        try:
-                            # Fetch comments (with caching)
-                            comments = get_cached_comments(video_id, max_comments=max_comments)
+                with st.spinner("Fetching and analyzing comments..."):
+                    try:
+                        # Fetch comments (with caching)
+                        comments = get_cached_comments(st.session_state.video_id, max_comments=max_comments)
+                        
+                        if not comments:
+                            st.warning("No comments found for this video.")
+                        else:
+                            st.success(f"Using {len(comments)} comments")
                             
-                            if not comments:
-                                st.warning("No comments found for this video.")
-                            else:
-                                st.success(f"Using {len(comments)} comments")
+                            # Clean texts: one for analysis, one for display
+                            raw_texts = [c.get("text", "") for c in comments]
+                            analysis_texts = [clean_text(t) for t in raw_texts]
+                            display_texts = [clean_text_for_display(t) for t in raw_texts]
+                            
+                            # Filter out empty texts (keep indices aligned)
+                            valid_data = [(disp, anal) for disp, anal in zip(display_texts, analysis_texts) if anal.strip()]
+                            
+                            if valid_data:
+                                display_texts, analysis_texts = zip(*valid_data)
+                                sentiments = predict_sentiment(list(analysis_texts))
                                 
-                                # Clean texts: one for analysis, one for display
-                                raw_texts = [c.get("text", "") for c in comments]
-                                analysis_texts = [clean_text(t) for t in raw_texts]
-                                display_texts = [clean_text_for_display(t) for t in raw_texts]
+                                # Store display text with sentiments in session state
+                                st.session_state.comments_data = list(zip(display_texts, sentiments))
+                                # Track URL to detect video changes
+                                st.session_state.previous_url = st.session_state[f"yt_{st.session_state.youtube_key}"]
                                 
-                                # Filter out empty texts (keep indices aligned)
-                                valid_data = [(disp, anal) for disp, anal in zip(display_texts, analysis_texts) if anal.strip()]
-                                
-                                if valid_data:
-                                    display_texts, analysis_texts = zip(*valid_data)
-                                    sentiments = predict_sentiment(list(analysis_texts))
-                                    
-                                    # Store display text with sentiments in session state
-                                    st.session_state.comments_data = list(zip(display_texts, sentiments))
-                                    # Track URL to detect video changes
-                                    st.session_state.previous_url = st.session_state[f"yt_{st.session_state.youtube_key}"]
-                                    
-                        except Exception as e:
-                            st.error(f"Error fetching comments: {str(e)}")
-                            st.info("Make sure YOUTUBE_API_KEY is set in your environment variables.")
+                    except Exception as e:
+                        st.error(f"Error fetching comments: {str(e)}")
+                        st.info("Make sure YOUTUBE_API_KEY is set in your environment variables.")
             
             # Display results if available
             if "comments_data" in st.session_state and st.session_state.comments_data:
@@ -437,20 +481,20 @@ def main():
             with st.expander("Clustering Settings", expanded=True):
                 max_comments_cluster = st.slider(
                     "Maximum comments to cluster", 
-                    min_value=20, max_value=500, value=100, step=10,
+                    min_value=20, max_value=500, value=250, step=10,
                     key="cluster_max_comments"
                 )
                 min_cluster_size = st.slider(
                     "Min cluster size", 
-                    min_value=3, max_value=20, value=5, step=1,
+                    min_value=3, max_value=10, value=3, step=1,
                     help="Minimum number of comments to form a cluster",
                     key="cluster_min_size"
                 )
                 display_cache_status()
             
             # Get values from session state to ensure they persist through button click
-            current_max_comments = st.session_state.get("cluster_max_comments", 100)
-            current_min_cluster_size = st.session_state.get("cluster_min_size", 5)
+            current_max_comments = st.session_state.get("cluster_max_comments", 250)
+            current_min_cluster_size = st.session_state.get("cluster_min_size", 3)
             
             cluster_button = st.button("Cluster Comments", 
                     type='primary', 
@@ -465,89 +509,81 @@ def main():
             ]
             
             if cluster_button:
-                video_url = st.session_state[f"yt_{st.session_state.youtube_key}"]
-                video_id_match = re.search(r'(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})', video_url)
-                
-                if not video_id_match:
-                    st.error("Could not extract video ID from URL")
-                else:
-                    video_id = video_id_match.group(1)
-                    
-                    with st.spinner("Fetching comments and computing embeddings..."):
-                        try:
-                            # Fetch comments (with caching)
-                            comments = get_cached_comments(video_id, max_comments=current_max_comments)
+                with st.spinner("Fetching comments and computing embeddings..."):
+                    try:
+                        # Fetch comments (with caching)
+                        comments = get_cached_comments(st.session_state.video_id, max_comments=current_max_comments)
+                        
+                        if not comments:
+                            st.warning("No comments found for this video.")
+                        elif len(comments) < current_min_cluster_size:
+                            st.warning(f"Not enough comments ({len(comments)}) for clustering. Need at least {current_min_cluster_size}.")
+                        else:
+                            st.success(f"Using {len(comments)} comments")
                             
-                            if not comments:
-                                st.warning("No comments found for this video.")
-                            elif len(comments) < current_min_cluster_size:
-                                st.warning(f"Not enough comments ({len(comments)}) for clustering. Need at least {current_min_cluster_size}.")
-                            else:
-                                st.success(f"Using {len(comments)} comments")
+                            # Clean texts
+                            raw_texts = [c.get("text", "") for c in comments]
+                            analysis_texts = [clean_text(t) for t in raw_texts]
+                            display_texts = [clean_text_for_display(t) for t in raw_texts]
+                            
+                            # Filter out empty texts
+                            valid_data = [(disp, anal) for disp, anal in zip(display_texts, analysis_texts) if anal.strip()]
+                            
+                            if valid_data and len(valid_data) >= current_min_cluster_size:
+                                display_texts, analysis_texts = zip(*valid_data)
                                 
-                                # Clean texts
-                                raw_texts = [c.get("text", "") for c in comments]
-                                analysis_texts = [clean_text(t) for t in raw_texts]
-                                display_texts = [clean_text_for_display(t) for t in raw_texts]
-                                
-                                # Filter out empty texts
-                                valid_data = [(disp, anal) for disp, anal in zip(display_texts, analysis_texts) if anal.strip()]
-                                
-                                if valid_data and len(valid_data) >= current_min_cluster_size:
-                                    display_texts, analysis_texts = zip(*valid_data)
+                                with st.spinner(f"Running HDBSCAN clustering (min_cluster_size={current_min_cluster_size})..."):
+                                    cluster_result = cluster_comments(
+                                        list(analysis_texts),
+                                        min_cluster_size=current_min_cluster_size
+                                    )
                                     
-                                    with st.spinner(f"Running HDBSCAN clustering (min_cluster_size={current_min_cluster_size})..."):
-                                        cluster_result = cluster_comments(
-                                            list(analysis_texts),
-                                            min_cluster_size=current_min_cluster_size
-                                        )
-                                        
-                                        # Pre-compute UMAP reduction to avoid recomputing on filter change
-                                        reduced_embeddings = None
-                                        if cluster_result["embeddings"] is not None and len(cluster_result["embeddings"]) > 5:
-                                            with st.spinner("Computing visualization..."):
-                                                try:
-                                                    reduced_embeddings = reduce_dimensions_for_plot(cluster_result["embeddings"])
-                                                except Exception:
-                                                    reduced_embeddings = None
-                                        
-                                        # Extract top keywords per cluster
-                                        cluster_keywords = {}
-                                        if cluster_result["n_clusters"] > 0:
-                                            with st.spinner("Extracting keywords..."):
-                                                try:
-                                                    cluster_keywords = top_keywords_per_cluster_nltk(
-                                                        list(analysis_texts),
-                                                        cluster_result["labels"],
-                                                        top_n=10
-                                                    )
-                                                except Exception as kw_error:
-                                                    st.warning(f"Could not extract keywords: {kw_error}")
-                                                    cluster_keywords = {}
-                                        
-                                        st.session_state.cluster_data = {
-                                            "display_texts": list(display_texts),
-                                            "analysis_texts": list(analysis_texts),
-                                            "labels": cluster_result["labels"],
-                                            "embeddings": cluster_result["embeddings"],
-                                            "reduced_embeddings": reduced_embeddings,
-                                            "n_clusters": cluster_result["n_clusters"],
-                                            "cluster_sizes": cluster_result["cluster_sizes"],
-                                            "cluster_keywords": cluster_keywords,
-                                            "settings": {
-                                                "min_cluster_size": current_min_cluster_size,
-                                                "max_comments": current_max_comments
-                                            }
+                                    # Pre-compute UMAP reduction to avoid recomputing on filter change
+                                    reduced_embeddings = None
+                                    if cluster_result["embeddings"] is not None and len(cluster_result["embeddings"]) > 5:
+                                        with st.spinner("Computing visualization..."):
+                                            try:
+                                                reduced_embeddings = reduce_dimensions_for_plot(cluster_result["embeddings"])
+                                            except Exception:
+                                                reduced_embeddings = None
+                                    
+                                    # Extract top keywords per cluster
+                                    cluster_keywords = {}
+                                    if cluster_result["n_clusters"] > 0:
+                                        with st.spinner("Extracting keywords..."):
+                                            try:
+                                                cluster_keywords = top_keywords_per_cluster_nltk(
+                                                    list(analysis_texts),
+                                                    cluster_result["labels"],
+                                                    top_n=10
+                                                )
+                                            except Exception as kw_error:
+                                                st.warning(f"Could not extract keywords: {kw_error}")
+                                                cluster_keywords = {}
+                                    
+                                    st.session_state.cluster_data = {
+                                        "display_texts": list(display_texts),
+                                        "analysis_texts": list(analysis_texts),
+                                        "labels": cluster_result["labels"],
+                                        "embeddings": cluster_result["embeddings"],
+                                        "reduced_embeddings": reduced_embeddings,
+                                        "n_clusters": cluster_result["n_clusters"],
+                                        "cluster_sizes": cluster_result["cluster_sizes"],
+                                        "cluster_keywords": cluster_keywords,
+                                        "settings": {
+                                            "min_cluster_size": current_min_cluster_size,
+                                            "max_comments": current_max_comments
                                         }
-                                        # Track URL to detect video changes
-                                        st.session_state.previous_url = st.session_state[f"yt_{st.session_state.youtube_key}"]
-                                else:
-                                    st.warning("Not enough valid comments for clustering.")
-                                    
-                        except Exception as e:
-                            st.error(f"Error during clustering: {str(e)}")
-                            st.info("Make sure YOUTUBE_API_KEY is set in your environment variables.")
-            
+                                    }
+                                    # Track URL to detect video changes
+                                    st.session_state.previous_url = st.session_state[f"yt_{st.session_state.youtube_key}"]
+                            else:
+                                st.warning("Not enough valid comments for clustering.")
+                                
+                    except Exception as e:
+                        st.error(f"Error during clustering: {str(e)}")
+                        st.info("Make sure YOUTUBE_API_KEY is set in your environment variables.")
+        
             # Display clustering results
             if st.session_state.cluster_data is not None:
                 cluster_data = st.session_state.cluster_data
