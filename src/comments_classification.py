@@ -1,21 +1,11 @@
 import os
 import re
-import tempfile
-import json
 from typing import List, Optional
 from dotenv import load_dotenv, find_dotenv
 
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-
-# Optional: YouTube fetch (only if googleapiclient installed and YOUTUBE_API_KEY provided)
-try:
-    from googleapiclient.discovery import build
-    _youtube_available = True
-except Exception:
-    build = None
-    _youtube_available = False
 
 # ---------- Config ----------
 # Russian sentiment model (positive, neutral, negative)
@@ -68,43 +58,6 @@ def init_en_model():
     if _en_tokenizer is None or _en_model is None:
         _en_tokenizer = AutoTokenizer.from_pretrained(EN_MODEL)
         _en_model = AutoModelForSequenceClassification.from_pretrained(EN_MODEL).to(_device)
-
-
-# ---------- YouTube fetcher ----------
-def fetch_top_comments_from_youtube(video_id: str, max_comments: int = 200) -> List[dict]:
-    """Fetch top-level comments using YouTube Data API v3.
-       Requires environment variable YOUTUBE_API_KEY set (HF Spaces secret).
-    """
-    api_key = os.getenv("YOUTUBE_API_KEY", "")
-    if not api_key or not _youtube_available or build is None:
-        raise RuntimeError("YouTube API not available. Provide comments manually or set YOUTUBE_API_KEY.")
-    youtube = build("youtube", "v3", developerKey=api_key)
-    comments = []
-    next_page_token = None
-    while len(comments) < max_comments:
-        resp = youtube.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            maxResults=100,
-            order="relevance",  # top comments
-            pageToken=next_page_token
-        ).execute()
-        for item in resp.get("items", []):
-            s = item["snippet"]["topLevelComment"]["snippet"]
-            comments.append({
-                "id": item.get("id"),
-                "text": s.get("textDisplay", "") if isinstance(s, dict) else "",
-                "author": s.get("authorDisplayName") if isinstance(s, dict) else None,
-                "published_at": s.get("publishedAt") if isinstance(s, dict) else None,
-                "like_count": s.get("likeCount", 0) if isinstance(s, dict) else 0
-            })
-            if len(comments) >= max_comments:
-                break
-        next_page_token = resp.get("nextPageToken")
-        if not next_page_token:
-            break
-    return comments
-
 
 # ---------- Preprocessing ----------
 import html
