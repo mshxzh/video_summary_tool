@@ -26,6 +26,7 @@ transformers>=4.30.0
 # Clustering
 hdbscan>=0.8.33
 umap-learn>=0.5.4
+scikit-learn>=1.0.0
 
 # NLP
 nltk>=3.8.0
